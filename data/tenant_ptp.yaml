@@ -1,0 +1,34 @@
+---
+apic:
+  tenants:
+    - name: ptp
+
+      vrfs:
+        - name: vrf1
+
+      bridge_domains:
+        - name: bd1
+          vrf: vrf1
+          subnets:
+            - ip: 192.168.3.1/24
+
+      application_profiles:
+        - name: ap
+          endpoint_groups:
+            - name: epg1
+              bridge_domain: bd1
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 45
+                  vlan: 1588
+                  mode: untagged
+                  deployment_immediacy: immediate
+
+
+
+
+
+
+

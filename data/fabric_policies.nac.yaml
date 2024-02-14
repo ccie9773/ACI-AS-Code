@@ -1,0 +1,94 @@
+---
+apic:
+  fabric_policies:
+    fabric_bgp_as: 65100
+    ptp:
+      admin_state: true
+
+    fabric_bgp_rr:
+      - 1101
+      - 1102
+
+    aaa:
+      tacacs_providers:
+        - hostname_ip: 100.64.60.250
+          key: '123Cisco123'
+          mgmt_epg: oob
+
+      login_domains:
+        - name: tacacs
+          realm: tacacs
+          tacacs_providers:
+            - hostname_ip: 100.64.60.250
+        - name: local
+          realm: local
+
+    remote_locations:
+      - name: external-backup
+        hostname_ip: 100.64.60.248
+        protocol: scp
+        path: '/home/cisco/poc/crown'
+        port: 22
+        username: cisco
+        password: 123Cisco123
+
+    schedulers:
+      - name: every-twenty-four-hours
+        recurring_windows:
+          - name: midnight
+            day: Monday
+            hour: 0
+            minute: 0
+
+    config_exports:
+      - name: daily-backup
+        remote_location: external-backup
+        scheduler: every-twenty-four-hours
+
+    monitoring:
+      snmp_traps:
+        - name: trap1
+          destinations:
+            - hostname_ip: 100.64.60.100
+              community: test
+      syslogs:
+        - name: syslog1
+          destinations:
+            - hostname_ip: 100.64.60.100
+
+    pod_policies:
+      date_time_policies:
+        - name: ntp-servers
+          ntp_admin_state: true
+          ntp_servers:
+            - hostname_ip: 100.64.255.2
+            - hostname_ip: 100.64.60.123
+              
+      snmp_policies:
+        - name: snmp-trap-destinations
+          communities:
+            - 123Cisco123
+
+    pod_policy_groups:
+      - name: pod-policies
+        date_time_policy: ntp-servers
+        snmp_policy: snmp-trap-destinations
+
+    switch_policies:
+      node_control_policies:
+        - name: flow-monitoring-type-netflow
+          telemetry: netflow
+        - name: flow-monitoring-type-analytics
+          telemetry: analytics
+        - name: flow-monitoring-type-telemetry
+          telemetry: telemetry
+
+
+    leaf_switch_policy_groups:
+      - name: all-leafs
+        node_control_policy: flow-monitoring-type-telemetry
+
+    spine_switch_policy_groups:
+      - name: all-spines
+        node_control_policy: flow-monitoring-type-telemetry
+

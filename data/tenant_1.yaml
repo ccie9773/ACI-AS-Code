@@ -1,0 +1,53 @@
+---
+apic:
+  tenants:
+    - name: tenant1
+
+      vrfs:
+        - name: vrf1
+
+      bridge_domains:
+        - name: bd1
+          vrf: vrf1
+          subnets:
+            - ip: 192.168.11.1/24
+
+        - name: bd2
+          vrf: vrf1
+          subnets:
+            - ip: 192.168.22.1/24
+
+      application_profiles:
+        - name: ap
+          endpoint_groups:
+            - name: epg1
+              bridge_domain: bd1
+              vmware_vmm_domains:
+                - name: vds1-managed
+              contracts:
+                providers:
+                  - permit-all
+                  - epg1-epg2
+
+            - name: epg2
+              bridge_domain: bd2
+              vmware_vmm_domains:
+                - name: vds1-managed
+              consumers:
+                - epg1-epg2
+
+
+      filters:
+        - name: permit-any
+          entries:
+            - name: any
+              ethertype: ip
+              protocol: unspecified
+
+      contracts:
+        - name: epg1-epg2
+          subjects:
+            - name: any
+              filters:
+                - filter: permit-any
+

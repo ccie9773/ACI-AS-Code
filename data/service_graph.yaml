@@ -1,0 +1,217 @@
+---
+apic:
+  tenants:
+    - name: service_graph
+
+      vrfs:
+        - name: vrf1
+
+      bridge_domains:
+        - name: bd1
+          vrf: vrf1
+          subnets:
+            - ip: 192.168.1.1/24
+
+        - name: bd2
+          vrf: vrf1
+          subnets:
+            - ip: 192.168.2.1/24
+
+        - name: service_bd1
+          vrf: vrf1
+          subnets:
+            - ip: 172.16.1.1/24
+
+        - name: service_bd2
+          vrf: vrf1
+          subnets:
+            - ip: 172.16.2.1/24
+
+      application_profiles:
+        - name: ap
+          endpoint_groups:
+            - name: epg11
+              bridge_domain: bd1
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3011
+                - node_id: 1202
+                  port: 11
+                  vlan: 3011
+
+            - name: epg12
+              bridge_domain: bd1
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3012
+                - node_id: 1202
+                  port: 11
+                  vlan: 3012
+
+            - name: epg21
+              bridge_domain: bd2
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3021
+                - node_id: 1202
+                  port: 11
+                  vlan: 3021
+
+            - name: epg22
+              bridge_domain: bd2
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3022
+                - node_id: 1202
+                  port: 11
+                  vlan: 3022
+
+          endpoint_security_groups:
+            - name: ESG1
+              vrf: vrf1
+              contracts:
+                consumers:
+                  - esg1-esg2
+              epg_selectors:
+                - endpoint_group: epg11
+                - endpoint_group: epg12
+            - name: ESG2
+              vrf: vrf1
+              contracts:
+                providers:
+                  - esg1-esg2
+              epg_selectors:
+                - endpoint_group: epg21
+                - endpoint_group: epg22
+
+      filters:
+        - name: permit-any
+          entries:
+            - name: any
+              ethertype: ip
+              protocol: unspecified
+
+      contracts:
+        - name: esg1-esg2
+          subjects:
+            - name: any
+              filters:
+                - filter: permit-any
+              service_graph: fw
+                  
+      policies:
+        ip_sla_policies:
+          - name: SLA
+            frequency: 10
+            multiplier: 10
+            sla_type: icmp
+
+      services:
+        l4l7_devices:
+          - name: asa
+            context_aware: single-Context
+            type: PHYSICAL
+            function: GoTo
+            copy_device: false
+            managed: false
+            promiscuous_mode: false
+            service_type: FW
+            physical_domain: all-physical-devices
+            concrete_devices:
+              - name: asa
+                interfaces:
+                  - name: fw-vpc
+                    node_id: 1203
+                    node2_id: 1204
+                    channel: fw_vpc
+
+            logical_interfaces:
+              - name: inside
+                vlan: 201
+                concrete_interfaces:
+                  - device: asa
+                    interface_name: fw-vpc 
+              - name: outside
+                vlan: 202
+                concrete_interfaces:
+                  - device: asa
+                    interface_name: fw-vpc      
+
+        service_graph_templates:
+          - name: fw
+            alias: fw
+            template_type: FW_ROUTED
+            redirect: true
+            share_encapsulation: false
+            device:
+              tenant: service_graph
+              name: asa
+            consumer:
+              direct_connect: false
+            provider:
+              direct_connect: false
+
+        redirect_policies:
+          - name: inside
+            type: L3
+            l3_destinations:
+              - description: fw inside
+                ip: 172.16.1.254
+                mac: 00:10:01:01:01:01
+                redirect_health_group: HEALTH_GROUP1
+            ip_sla_policy: SLA
+          - name: outside
+            type: L3
+            l3_destinations:
+              - description: fw outside
+                ip: 172.16.2.254
+                mac: 00:10:02:02:02:02
+                redirect_health_group: HEALTH_GROUP2
+            ip_sla_policy: SLA
+
+        redirect_health_groups:
+          - name: HEALTH_GROUP1
+            description: fw inside group
+          - name: HEALTH_GROUP2
+            description: fw outside group
+
+        device_selection_policies:
+          - contract: esg1-esg2
+            service_graph_template: fw
+            provider:
+              redirect_policy:
+                name: inside
+              logical_interface: inside
+              bridge_domain:
+                name: service_bd1
+            consumer:
+              redirect_policy:
+                name: outside
+              logical_interface: outside
+              bridge_domain:
+                name: service_bd2
+
+
+
+
+

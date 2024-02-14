@@ -1,0 +1,639 @@
+---
+apic:
+  tenants:
+    - name: multicast
+
+      vrfs:
+        - name: vrf_a
+          preferred_group: false
+          pim:
+            mtu: 9000
+            fast_convergence: true
+            #resource_policy_multicast_route_map: cpoc_test
+            #max_multicast_entries: 100
+            #reserved_multicast_entries: 100
+            static_rps:
+              - ip: 192.168.255.255
+                multicast_route_map: cpoc_test_static
+            static_rps_sda:
+              - ip: 10.0.0.2
+                multicast_route_map: cpoc_test_static_sda
+            fabric_rps:
+              - ip: 192.168.255.1
+                multicast_route_map: cpoc_test_fabric_aci
+
+        - name: vrf_b
+          preferred_group: false
+          pim:
+            mtu: 9000
+            fast_convergence: true
+            #resource_policy_multicast_route_map: cpoc_test
+            #max_multicast_entries: 100
+            #reserved_multicast_entries: 100
+            static_rps:
+              - ip: 192.168.255.255
+                multicast_route_map: cpoc_test_static
+            static_rps_sda:
+              - ip: 10.0.0.2
+                multicast_route_map: cpoc_test_static_sda
+            fabric_rps:
+              - ip: 192.168.255.1
+                multicast_route_map: cpoc_test_fabric_aci
+            inter_vrf_policies:
+              - tenant: multicast
+                vrf: vrf_a
+                multicast_route_map: cpoc_test_intervrf
+
+        - name: dc_vrf_prod
+          preferred_group: false
+
+      bridge_domains:
+        - name: bd1
+          vrf: dc_vrf_prod
+          subnets:
+            - ip: 192.168.101.1/24
+              public: true
+              shared: true
+
+        - name: bd_a
+          vrf: vrf_a
+          subnets:
+            - ip: 192.168.100.1/24
+              public: true
+              shared: true
+          l3_multicast: true
+          igmp_interface_policy: igmp_enabled
+
+        - name: bd_b
+          vrf: vrf_b
+          subnets:
+            - ip: 192.168.200.1/24
+              public: true
+              shared: true
+          l3_multicast: true
+          igmp_interface_policy: igmp_enabled
+
+      application_profiles:
+        - name: ap
+          endpoint_groups:
+            - name: epg1
+              bridge_domain: bd1
+              preferred_group: false
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3081
+                - node_id: 1202
+                  port: 11
+                  vlan: 3081
+              contracts:
+                consumers:
+                  - dc_vrf_prod_to_fw
+
+            - name: epga
+              bridge_domain: bd_a
+              preferred_group: false
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3082
+                - node_id: 1202
+                  port: 11
+                  vlan: 3082
+              contracts:
+                consumers:
+                  - vrf_a_to_fw
+
+            - name: epgb
+              bridge_domain: bd_b
+              preferred_group: false
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3083
+                - node_id: 1202
+                  port: 11
+                  vlan: 3083
+              contracts:
+                consumers:
+                  - vrf_b_to_fw
+
+      filters:
+        - name: permit-any
+          entries:
+            - name: any
+              ethertype: ip
+              protocol: unspecified
+
+      contracts:
+        - name: permit-all
+          scope: tenant
+          subjects:
+            - name: any
+              filters:
+                - filter: permit-any
+
+        - name: vrf_a_to_fw
+          scope: tenant
+          subjects:
+            - name: any
+              filters:
+                - filter: permit-any
+
+        - name: vrf_b_to_fw
+          scope: tenant
+          subjects:
+            - name: any
+              filters:
+                - filter: permit-any
+
+        - name: vrf_a_to_sda
+          scope: tenant
+          subjects:
+            - name: any
+              filters:
+                - filter: permit-any
+
+        - name: vrf_b_to_sda
+          scope: tenant
+          subjects:
+            - name: any
+              filters:
+                - filter: permit-any
+                  
+        - name: dc_vrf_prod_to_fw
+          scope: tenant
+          subjects:
+            - name: any
+              filters:
+                - filter: permit-any
+
+      policies:
+        pim_policies:
+          - name: pim-enabled
+            passive: false
+        bfd_interface_policies:
+          - name: bfd-enabled
+            subinterface_optimization: true
+        set_rules:
+          - name: set-1
+            community_mode: append
+            community: regular:as2-nn2:100:800
+        match_rules:
+          - name: all-bds
+            prefixes:
+              - ip: 192.168.0.0/16
+                aggregate: true
+                from_length: 24
+                to_length: 24
+              - ip: 172.16.0.0/16
+                aggregate: true
+                from_length: 24
+                to_length: 24
+              - ip: 192.168.255.255/32
+                aggregate: false
+              - ip: 192.168.255.1/32
+                aggregate: false
+
+        multicast_route_maps:
+          - name: cpoc_test_fabric_aci
+            entries:
+              - order: 1
+                group_ip: 226.0.0.0/8
+                action: permit
+          - name: cpoc_test_intervrf
+            entries:
+              - order: 1
+                group_ip: 226.0.0.0/4
+                action: permit
+
+        igmp_interface_policies:
+           - name: igmp_enabled
+
+      l3outs:
+        - name: l3out_fw_a
+          vrf: vrf_a
+          domain: all-tenant-vrfs
+          bfd_policy: bfd-enabled
+          node_profiles:
+            - name: l3out-nodes
+              nodes:
+                - node_id: 1203
+                  router_id: 10.10.203.203
+                  router_id_as_loopback: false
+                  loopback: 10.10.232.232
+                - node_id: 1204
+                  router_id: 10.10.204.204
+                  router_id_as_loopback: false
+                  loopback: 10.10.242.242
+              interface_profiles:
+                - name: leaf1203
+                  interfaces:
+                    - node_id: 1203
+                      port: 21
+                      mtu: 9216
+                      vlan: 132
+                      svi: false
+                      ip: 10.255.132.1/24
+                      bgp_peers:
+                        - ip: 10.255.132.2
+                          remote_as: 100
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+                - name: leaf1204
+                  interfaces:
+                    - node_id: 1204
+                      port: 21
+                      mtu: 9216
+                      vlan: 142
+                      svi: false
+                      ip: 10.255.142.1/24
+                      bgp_peers:
+                        - ip: 10.255.142.2
+                          remote_as: 100
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+          external_endpoint_groups:
+            - name: external
+              subnets:
+                - prefix: 0.0.0.0/0
+#                - prefix: 172.16.20.0/24
+#                  export_route_control: true
+                  
+              contracts:
+                providers:
+                  - vrf_a_to_fw
+                consumers:
+                  - vrf_a_to_sda
+
+          export_route_map:
+            contexts:
+              - name: export-routes
+                match_rule: all-bds
+                set_rule: set-1
+
+        - name: l3out_fw_b
+          vrf: vrf_b
+          domain: all-tenant-vrfs
+          bfd_policy: bfd-enabled
+          node_profiles:
+            - name: l3out-nodes
+              nodes:
+                - node_id: 1203
+                  router_id: 10.10.203.203
+                  router_id_as_loopback: false
+                  loopback: 10.10.233.233
+                - node_id: 1204
+                  router_id: 10.10.204.204
+                  router_id_as_loopback: false
+                  loopback: 10.10.243.243
+              interface_profiles:
+                - name: leaf1203
+                  interfaces:
+                    - node_id: 1203
+                      port: 21
+                      mtu: 9216
+                      vlan: 133
+                      svi: false
+                      ip: 10.255.133.1/24
+                      bgp_peers:
+                        - ip: 10.255.133.2
+                          remote_as: 200
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+                - name: leaf1204
+                  interfaces:
+                    - node_id: 1204
+                      port: 21
+                      mtu: 9216
+                      vlan: 143
+                      svi: false
+                      ip: 10.255.143.1/24
+                      bgp_peers:
+                        - ip: 10.255.143.2
+                          remote_as: 200
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+          external_endpoint_groups:
+            - name: external
+              subnets:
+                - prefix: 0.0.0.0/0
+#                - prefix: 172.16.20.0/24
+#                  export_route_control: true
+                  
+              contracts:
+                providers:
+                  - vrf_b_to_fw
+                consumers:
+                  - vrf_b_to_sda
+
+          export_route_map:
+            contexts:
+              - name: export-routes
+                match_rule: all-bds
+                set_rule: set-1
+
+        - name: l3out_fw_dc
+          vrf: dc_vrf_prod
+          domain: all-tenant-vrfs
+          bfd_policy: bfd-enabled
+          node_profiles:
+            - name: l3out-nodes
+              nodes:
+                - node_id: 1203
+                  router_id: 10.10.203.203
+                  router_id_as_loopback: false
+                  loopback: 10.10.230.230
+                - node_id: 1204
+                  router_id: 10.10.204.204
+                  router_id_as_loopback: false
+                  loopback: 10.10.240.240
+              interface_profiles:
+                - name: leaf1203
+                  interfaces:
+                    - node_id: 1203
+                      port: 21
+                      mtu: 9216
+                      vlan: 130
+                      svi: false
+                      ip: 10.255.130.1/24
+                      bgp_peers:
+                        - ip: 10.255.130.2
+                          remote_as: 300
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+                - name: leaf1204
+                  interfaces:
+                    - node_id: 1204
+                      port: 21
+                      mtu: 9216
+                      vlan: 140
+                      svi: false
+                      ip: 10.255.140.1/24
+                      bgp_peers:
+                        - ip: 10.255.140.2
+                          remote_as: 300
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+          external_endpoint_groups:
+            - name: external
+              subnets:
+                - prefix: 0.0.0.0/0
+#                - prefix: 172.16.20.0/24
+#                  export_route_control: true
+                  
+              contracts:
+                providers:
+                  - dc_vrf_prod_to_fw
+
+          export_route_map:
+            contexts:
+              - name: export-routes
+                match_rule: all-bds
+                set_rule: set-1
+
+        - name: l3out_sda_a
+          vrf: vrf_a
+          domain: all-tenant-vrfs
+          bfd_policy: bfd-enabled
+          pim_polocies: pim-enabled
+          l3_multicast_ipv4: true
+          node_profiles:
+            - name: l3out-nodes
+              nodes:
+                - node_id: 1203
+                  router_id: 10.10.203.203
+                  router_id_as_loopback: false
+                  loopback: 10.7.203.203
+                - node_id: 1204
+                  router_id: 10.10.204.204
+                  router_id_as_loopback: false
+                  loopback: 10.7.204.204
+              interface_profiles:
+                - name: leaf1203
+                  interfaces:
+                    - port: 47
+                      node_id: 1203
+                      mtu: 9216
+                      vlan: 803
+                      svi: false
+                      ip: 10.0.7.98/30
+                      bgp_peers:
+                        - ip: 10.0.7.97
+                          remote_as: 65101
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+                          local_as: 65201
+                    - port: 48
+                      node_id: 1203
+                      mtu: 9216
+                      vlan: 807
+                      svi: false
+                      ip: 10.0.7.114/30
+                      bgp_peers:
+                        - ip: 10.0.7.113
+                          remote_as: 65101
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+                          local_as: 65201
+                - name: leaf1204
+                  interfaces:
+                    - port: 47
+                      node_id: 1204
+                      mtu: 9216
+                      vlan: 804
+                      svi: false
+                      ip: 10.0.7.102/30
+                      bgp_peers:
+                        - ip: 10.0.7.101
+                          remote_as: 65101
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+                          local_as: 65201
+                    - port: 48
+                      node_id: 1204
+                      mtu: 9216
+                      vlan: 808
+                      svi: false
+                      ip: 10.0.7.118/30
+                      bgp_peers:
+                        - ip: 10.0.7.117
+                          remote_as: 65101
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+                          local_as: 65201
+          external_endpoint_groups:
+            - name: external
+              subnets:
+                - prefix: 0.0.0.0/0
+#                - prefix: 172.16.20.0/24
+#                  export_route_control: true
+                  
+              contracts:
+                providers:
+                  - vrf_a_to_sda
+#                consumers:
+#                  - vrf_a_to_fw
+
+          export_route_map:
+            contexts:
+              - name: export-routes
+                match_rule: all-bds
+                set_rule: set-1
+
+        - name: l3out_sda_b
+          vrf: vrf_b
+          domain: all-tenant-vrfs
+          bfd_policy: bfd-enabled
+          pim_polocies: pim-enabled
+          l3_multicast_ipv4: true
+          node_profiles:
+            - name: l3out-nodes
+              nodes:
+                - node_id: 1203
+                  router_id: 10.10.203.203
+                  router_id_as_loopback: false
+                  loopback: 10.7.213.213
+                - node_id: 1204
+                  router_id: 10.10.204.204
+                  router_id_as_loopback: false
+                  loopback: 10.7.214.214
+              interface_profiles:
+                - name: leaf1203
+                  interfaces:
+                    - port: 47
+                      node_id: 1203
+                      mtu: 9216
+                      vlan: 801
+                      svi: false
+                      ip: 10.0.7.90/30
+                      bgp_peers:
+                        - ip: 10.0.7.89
+                          remote_as: 65101
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+                          local_as: 65201
+                    - port: 48
+                      node_id: 1203
+                      mtu: 9216
+                      vlan: 805
+                      svi: false
+                      ip: 10.0.7.106/30
+                      bgp_peers:
+                        - ip: 10.0.7.105
+                          remote_as: 65101
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+                          local_as: 65201
+                - name: leaf1204
+                  interfaces:
+                    - port: 47
+                      node_id: 1204
+                      mtu: 9216
+                      vlan: 802
+                      svi: false
+                      ip: 10.0.7.94/30
+                      bgp_peers:
+                        - ip: 10.0.7.93
+                          remote_as: 65101
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+                          local_as: 65201
+                    - port: 48
+                      node_id: 1204
+                      mtu: 9216
+                      vlan: 806
+                      svi: false
+                      ip: 10.0.7.110/30
+                      bgp_peers:
+                        - ip: 10.0.7.109
+                          remote_as: 65101
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          disable_peer_as_check: true
+                          bfd: true
+                          as_override: true
+                          local_as: 65201
+          external_endpoint_groups:
+            - name: external
+              subnets:
+                - prefix: 0.0.0.0/0
+#                - prefix: 172.16.20.0/24
+#                  export_route_control: true
+                  
+              contracts:
+                providers:
+                  - vrf_b_to_sda
+#                consumers:
+#                  - vrf_a_to_fw
+
+          export_route_map:
+            contexts:
+              - name: export-routes
+                match_rule: all-bds
+                set_rule: set-1

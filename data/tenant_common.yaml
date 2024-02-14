@@ -1,0 +1,18 @@
+---
+apic:
+  tenants:
+    - name: common 
+      filters:
+        - name: permit-any
+          entries:
+            - name: any
+              ethertype: ip
+              protocol: unspecified
+
+      contracts:
+        - name: permit-all
+          scope: global
+          subjects:
+            - name: any
+              filters:
+                - filter: permit-any

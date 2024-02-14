@@ -1,0 +1,88 @@
+apic:
+  node_policies:
+    vpc_groups:
+      mode: explicit
+      groups:
+        - id: 12
+          switch_1: 1201
+          switch_2: 1202
+        - id: 34
+          switch_1: 1203
+          switch_2: 1204
+
+
+    oob_endpoint_group: oob
+    inb_endpoint_group: inb
+    nodes:
+      - id: 1
+        role: apic
+        name: apic-1
+        inb_address: 100.64.168.21/24
+        inb_gateway: 100.64.168.1
+
+      - id: 2
+        role: apic
+        name: apic-2
+        inb_address: 100.64.168.22/24
+        inb_gateway: 100.64.168.1
+
+      - id: 3
+        role: apic
+        name: apic-3
+        inb_address: 100.64.168.23/24
+        inb_gateway: 100.64.168.1
+
+      - id: 1101
+        role: spine
+        name: spine01
+        serial_number: FDO23490NWZ
+        oob_address: 100.64.48.24/24
+        oob_gateway: 100.64.48.1
+        inb_address: 100.64.168.24/24
+        inb_gateway: 100.64.168.1
+
+      - id: 1102
+        role: spine
+        name: spine02
+        serial_number: FDO23510H2W
+        oob_address: 100.64.48.25/24
+        oob_gateway: 100.64.48.1
+        inb_address: 100.64.168.25/24
+        inb_gateway: 100.64.168.1
+
+
+      - id: 1201
+        role: leaf
+        name: leaf01
+        serial_number: FDO27152VC7
+        oob_address: 100.64.48.26/24
+        oob_gateway: 100.64.48.1
+        inb_address: 100.64.168.26/24
+        inb_gateway: 100.64.168.1
+
+      - id: 1202
+        role: leaf
+        name: leaf02
+        serial_number: FDO27152VCP
+        oob_address: 100.64.48.27/24
+        oob_gateway: 100.64.48.1
+        inb_address: 100.64.168.27/24
+        inb_gateway: 100.64.168.1
+
+      - id: 1203
+        role: leaf
+        name: leaf03
+        serial_number: FDO24410YVN
+        oob_address: 100.64.48.28/24
+        oob_gateway: 100.64.48.1
+        inb_address: 100.64.168.28/24
+        inb_gateway: 100.64.168.1
+
+      - id: 1204
+        role: leaf
+        name: leaf04
+        serial_number: FDO24410YTC
+        oob_address: 100.64.48.29/24
+        oob_gateway: 100.64.48.1
+        inb_address: 100.64.168.29/24
+        inb_gateway: 100.64.168.1

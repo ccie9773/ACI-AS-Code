@@ -1,0 +1,119 @@
+---
+apic:
+  tenants:
+    - name: demo
+
+      vrfs:
+        - name: blue
+
+      bridge_domains:
+        - name: bd1
+          vrf: blue
+          subnets:
+            - ip: 192.168.1.1/24
+              public: true
+              shared: true
+
+        - name: bd2
+          vrf: blue
+          subnets:
+            - ip: 192.168.2.1/24
+              public: true
+              shared: true
+
+      application_profiles:
+        - name: ap
+          endpoint_groups:
+            - name: epg1
+              bridge_domain: bd1
+              vmware_vmm_domains:
+                - name: vds1-managed
+                  elag: port-channel
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3001
+                - node_id: 1202
+                  port: 11
+                  vlan: 3001
+                - node_id: 1201
+                  node2_id: 1202
+                  channel: stc_vpc_1
+                  vlan: 3001
+                - node_id: 1201
+                  node2_id: 1202
+                  channel: stc_vpc_2
+                  vlan: 3001
+              contracts:
+                consumers:
+                  - epg1-epg2
+
+            - name: epg2
+              bridge_domain: bd2
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3002
+                - node_id: 1202
+                  port: 11
+                  vlan: 3002
+                - node_id: 1201
+                  node2_id: 1202
+                  channel: stc_vpc_1
+                  vlan: 3002
+                - node_id: 1201
+                  node2_id: 1202
+                  channel: stc_vpc_2
+                  vlan: 3002
+              contracts:
+                providers:
+                  - epg1-epg2
+
+      filters:
+        - name: permit-any
+          entries:
+            - name: any
+              ethertype: ip
+              protocol: unspecified
+        - name: tcp-any
+          entries: 
+            - name: tcp-any
+              ethertype: ip 
+              protocol: tcp
+
+      contracts:
+        - name: epg1-epg2
+          subjects:
+            - name: any
+              filters:
+                - filter: permit-any
+            - name: tcp
+              filters:
+                - filter: tcp-any
+                  
+
+#      l3outs:
+#        - name: l3out-to-external-router-1
+#          vrf: blue
+#          domain: all-tenant-vrfs
+#          ospf:
+#            area: backbone
+#            area_type: regular
+#            area_cost: 1
+#          nodes:
+#            - node_id: 101
+#              router_id: 101.101.101.101
+#              router_id_as_loopback: true
+#              interfaces:
+#                - channel: n7000-a
+#                  svi: true
+#                  vlan: 201
+#                  ip_a: 172.16.101.1/24
+#                  ip_b: 172.16.101.2/24
+#                  ip_shared: 172.16.101.3/24

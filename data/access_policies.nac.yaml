@@ -1,0 +1,397 @@
+---
+apic:
+  access_policies:
+    infra_vlan: 3882
+
+    mcp:
+      key: 123Cisco123!
+
+    vlan_pools:
+      - name: all-vlans
+        allocation: dynamic
+        ranges:
+          - from: 100
+            to: 149
+            allocation: static
+            description: "L3 peering to external device"
+          - from: 800
+            to: 899
+            allocation: static
+            description: "L3 peering to SDA Fabric"
+          - from: 1000
+            to: 1200
+            allocation: inherit
+            description: "esxi vlan"
+          - from: 1201
+            to: 1300
+            allocation: inherit
+            description: "esxi vlan-test"
+          - from: 3000
+            to: 3100
+            allocation: static
+            description: "STC static vlan"
+          - from: 1588
+            to: 1588
+            allocation: static
+            description: "ptp vlan"
+          - from: 200
+            to: 299
+            allocation: static
+            description: "service graph vlans"
+
+      - name: esx-test-vlans
+        allocation: dynamic
+        ranges:
+          - from: 1201
+            to: 1300
+            allocation: inherit
+            description: "esxi vlan-test"
+            
+      - name: inb-vlans
+        allocation: static
+        ranges:
+          - from: 2
+            to: 2
+            allocation: static
+            description: "INB vlan"
+
+    physical_domains:
+      - name: all-physical-devices
+        vlan_pool: all-vlans
+      - name: apic-domain
+        vlan_pool: inb-vlans
+      - name: esx-test-domain
+        vlan_pool: esx-test-vlans
+
+
+    routed_domains:
+      - name: all-tenant-vrfs
+        vlan_pool: all-vlans
+
+    aaeps:
+      - name: allow-all-vlans
+        physical_domains:
+          - all-physical-devices
+        vmware_vmm_domains:
+          - vds1-managed
+
+      - name: apic-aaep
+        physical_domains:
+          - apic-domain
+        infra_vlan: true
+
+      - name: l3-aaep
+        routed_domains:
+          - all-tenant-vrfs
+
+      - name: esx-test-aaep
+        routed_domains:
+          - esx-test-domain
+
+    interface_policies:
+      cdp_policies:
+        - name: nac-cdp-enabled
+          admin_state: true
+        - name: nac-cdp-disabled
+          admin_state: false
+      lldp_policies:
+        - name: nac-lldp-enabled
+          admin_rx_state: true
+          admin_tx_state: true
+        - name: nac-lldp-disabled
+          admin_rx_state: false
+          admin_tx_state: false
+      link_level_policies:
+        - name: nac-link-level-1G-auto
+          speed: 1G
+          auto: true
+          fec_mode: inherit
+        - name: nac-link-level-10G-auto
+          speed: 10G
+          auto: true
+          fec_mode: inherit
+        - name: nac-link-level-100G-auto
+          speed: 100G
+          auto: true
+          fec_mode: inherit
+      port_channel_policies:
+        - name: nac-lacp-active
+          mode: active
+        - name: nac-mac-pinning
+          mode: mac-pin
+      port_channel_member_policies:
+        - name: normal
+          rate: normal
+          priority: 32768
+        - name: fast
+          rate: fast
+          priority: 32768
+      spanning_tree_policies:
+        - name: bpdu-filter
+          bpdu_filter: true
+        - name: bpdu-guard
+          bpdu_guard: true
+      mcp_policies:
+        - name: mcp-enabled
+          admin_state: true
+        - name: mcp-disabled
+          admin_state: false
+
+    spine_interface_policy_groups:
+      - name: external-isn-switches
+        link_level_policy: nac-link-level-10G-auto
+        cdp_policy: nac-cdp-enabled
+        aaep: allow-all-vlans
+
+    switch_policies:
+      forwarding_scale_policies:
+        - name: high-dual-stack
+          profile: high-dual-stack
+        - name: dual-stack
+          profile: dual-stack
+
+    leaf_switch_policy_groups:
+      - name: all-leafs
+        forwarding_scale_policy: dual-stack
+
+    leaf_interface_policy_groups:
+      - name: core-routers
+        type: access
+        link_level_policy: nac-link-level-1G-auto
+        cdp_policy: nac-cdp-enabled
+        lldp_policy: nac-lldp-disabled
+        spanning_tree_policy: bpdu-filter
+        mcp_policy: mcp-enabled
+        aaep: allow-all-vlans
+
+      - name: l3out
+        type: access
+        link_level_policy: nac-link-level-10G-auto
+        cdp_policy: nac-cdp-enabled
+        lldp_policy: nac-lldp-disabled
+        spanning_tree_policy: bpdu-filter
+        mcp_policy: mcp-enabled
+        aaep: l3-aaep
+
+      - name: firewalls
+        type: access
+        link_level_policy: nac-link-level-10G-auto
+        lldp_policy: nac-lldp-disabled
+        cdp_policy: nac-cdp-enabled
+        spanning_tree_policy: bpdu-filter
+        mcp_policy: mcp-enabled
+        aaep: allow-all-vlans
+
+      - name: esxi-server
+        type: access
+        link_level_policy: nac-link-level-10G-auto
+        lldp_policy: nac-lldp-disabled
+        cdp_policy: nac-cdp-enabled
+        spanning_tree_policy: bpdu-filter
+        mcp_policy: mcp-enabled
+        aaep: allow-all-vlans
+
+      - name: stc
+        type: access
+        link_level_policy: nac-link-level-10G-auto
+        lldp_policy: nac-lldp-disabled
+        cdp_policy: nac-cdp-enabled
+        spanning_tree_policy: bpdu-filter
+        mcp_policy: mcp-enabled
+        aaep: allow-all-vlans
+
+      - name: ptp
+        type: access
+        link_level_policy: nac-link-level-10G-auto
+        lldp_policy: nac-lldp-disabled
+        cdp_policy: nac-cdp-enabled
+        spanning_tree_policy: bpdu-filter
+        mcp_policy: mcp-enabled
+        aaep: allow-all-vlans
+
+      - name: apic
+        type: access
+        link_level_policy: nac-link-level-10G-auto
+        lldp_policy: nac-lldp-enabled
+        cdp_policy: nac-cdp-disabled
+        aaep: apic-aaep
+
+      - name: stc_vpc_1
+        type: vpc
+        link_level_policy: nac-link-level-10G-auto
+        lldp_policy: nac-lldp-disabled
+        cdp_policy: nac-cdp-enabled
+        aaep: allow-all-vlans
+        port_channel_policy: nac-lacp-active
+
+      - name: stc_vpc_2
+        type: vpc
+        link_level_policy: nac-link-level-10G-auto
+        lldp_policy: nac-lldp-disabled
+        cdp_policy: nac-cdp-enabled
+        aaep: allow-all-vlans
+        port_channel_policy: nac-lacp-active
+
+      - name: fw_vpc
+        type: vpc
+        link_level_policy: nac-link-level-10G-auto
+        lldp_policy: nac-lldp-disabled
+        cdp_policy: nac-cdp-enabled
+        aaep: allow-all-vlans
+        port_channel_policy: nac-lacp-active
+
+      - name: esx_vpc_1
+        type: vpc
+        link_level_policy: nac-link-level-10G-auto
+        lldp_policy: nac-lldp-disabled
+        cdp_policy: nac-cdp-enabled
+        aaep: allow-all-vlans
+        port_channel_policy: nac-lacp-active
+
+      - name: esx_vpc_2
+        type: vpc
+        link_level_policy: nac-link-level-10G-auto
+        lldp_policy: nac-lldp-disabled
+        cdp_policy: nac-cdp-enabled
+        aaep: allow-all-vlans
+        port_channel_policy: nac-lacp-active
+
+
+    leaf_switch_profiles:
+      - name: leaf01_02
+        interface_profiles:
+          - stc
+          - esxi-server
+          - ptp
+          - apic
+          - stc_vpc_1
+          - stc_vpc_2
+#          - esx_vpc_1
+          - esx_vpc_2
+
+        selectors:
+          - name: leaf01_02
+            node_blocks:
+              - name: block1
+                from: 1201
+                to: 1202
+
+      - name: leaf03_04
+        interface_profiles:
+          - l3out
+          - fw_vpc
+        selectors:
+          - name: leaf03_04
+            node_blocks:
+              - name: block1
+                from: 1203
+                to: 1204
+
+
+    leaf_interface_profiles:
+      - name: esxi-server 
+        selectors:
+          - name: esxi-server 
+            policy_group: esxi-server
+            port_blocks:
+              - name: block1
+                from_port: 1
+                to_port: 2
+    
+      - name: stc 
+        selectors:
+          - name: stc 
+            policy_group: stc
+            port_blocks:
+              - name: block1
+                from_port: 11
+                to_port: 11
+
+      - name: stc_vpc_1 
+        selectors:
+          - name: stc_vpc_1 
+            policy_group: stc_vpc_1
+            port_blocks:
+              - name: block1
+                from_port: 13
+                to_port: 13
+
+
+      - name: stc_vpc_2
+        selectors:
+          - name: stc_vpc_2
+            policy_group: stc_vpc_2
+            port_blocks:
+              - name: block1
+                from_port: 14
+                to_port: 14
+
+      - name: esx_vpc_1
+        selectors:
+          - name: esx_vpc_1
+            policy_group: esx_vpc_1
+            port_blocks:
+              - name: block1
+                from_port: 3
+                to_port: 3
+
+      - name: esx_vpc_2
+        selectors:
+          - name: esx_vpc_2
+            policy_group: esx_vpc_2
+            port_blocks:
+              - name: block1
+                from_port: 4
+                to_port: 4
+
+
+      - name: fw_vpc
+        selectors:
+          - name: fw_vpc
+            policy_group: fw_vpc
+            port_blocks:
+              - name: block1
+                from_port: 20
+                to_port: 20
+
+      - name: l3out 
+        selectors:
+          - name: l3out 
+            policy_group: l3out
+            port_blocks:
+              - name: block1
+                from_port: 21
+                to_port: 21
+              - name: inb
+                from_port: 46
+                to_port: 46
+              - name: sda
+                from_port: 47
+                to_port: 48
+              - name: c9300-wan
+                from_port: 44
+                to_port: 45
+
+      - name: ptp 
+        selectors:
+          - name: ptp
+            policy_group: ptp
+            port_blocks:
+              - name: block1
+                from_port: 45
+                to_port: 45
+           
+      - name: apic 
+        selectors:
+          - name: apic
+            policy_group: apic
+            port_blocks:
+              - name: block1
+                from_port: 46
+                to_port: 48
+
+        
+
+ 
+
+

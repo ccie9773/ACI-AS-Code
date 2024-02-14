@@ -1,0 +1,7 @@
+---
+apic:
+  interface_policies:
+    nodes:
+      - id: 1202
+
+

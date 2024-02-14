@@ -1,0 +1,27 @@
+---
+apic:
+  tenants:
+    - name: tenant2
+
+      vrfs:
+        - name: vrf1
+
+      bridge_domains:
+        - name: bd1
+          vrf: vrf1
+          subnets:
+            - ip: 192.168.21.1/24
+              public: true
+              shared: true
+
+      application_profiles:
+        - name: ap
+          endpoint_groups:
+            - name: epg1
+              bridge_domain: bd1
+              vmware_vmm_domains:
+                - name: vds1-managed
+
+              contracts:
+                consumers:
+                  - permit-all

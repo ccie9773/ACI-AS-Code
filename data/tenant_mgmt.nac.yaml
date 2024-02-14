@@ -1,0 +1,139 @@
+---
+apic:
+  tenants:
+    - name: mgmt
+
+      bridge_domains:
+        - name: inb
+          vrf: inb
+          subnets:
+            - ip: 100.64.168.1/24
+              public: true
+              shared: true
+
+      inb_endpoint_groups:
+        - name: inb
+          vlan: 2
+          bridge_domain: inb
+          contracts:
+            providers:
+              - permit-to-inb
+
+      oob_endpoint_groups:
+        - name: oob
+          oob_contracts:
+            providers:
+              - permit-to-oob
+
+      ext_mgmt_instances:
+        - name: ext
+          subnets:
+            - 0.0.0.0/0
+          oob_contracts:
+            consumers:
+              - permit-to-oob
+
+      filters:
+        - name: permit-all
+          entries:
+            - name: all
+              ethertype: ip
+              protocol: unspecified
+
+        - name: tcp-src-any-to-dst-443
+          entries:
+            - name: src-any-to-dst-443
+              ethertype: ip
+              protocol: tcp
+              destination_from_port: https
+              destination_to_port: https
+
+      contracts:
+        - name: permit-to-inb
+          subjects:
+            - name: permit-all
+              filters:
+                - filter: permit-all
+
+      oob_contracts:
+        - name: permit-to-oob
+          subjects:
+            - name: permit-all
+              filters:
+                - filter: permit-all
+
+      l3outs:
+        - name: l3out
+          vrf: inb
+          domain: all-tenant-vrfs
+          bfd_policy: bfd-enabled
+          node_profiles:
+            - name: l3out-nodes
+              nodes:
+                - node_id: 1203
+                  router_id: 10.10.203.203
+                  router_id_as_loopback: true
+                - node_id: 1204
+                  router_id: 10.10.204.204
+                  router_id_as_loopback: true
+              interface_profiles:
+                - name: leaf1203
+                  interfaces:
+                    - node_id: 1203
+                      port: 46
+                      mtu: 9216
+                      vlan: 100
+                      svi: false
+                      ip: 10.100.11.3/31
+                      bgp_peers:
+                        - ip: 10.100.11.2 
+                          remote_as: 1000
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          bfd: true
+                          #local_as: 200
+                - name: leaf1204
+                  interfaces:
+                    - node_id: 1204
+                      port: 46
+                      mtu: 9216
+                      vlan: 100
+                      svi: false
+                      ip: 10.100.21.3/31
+                      bgp_peers:
+                        - ip: 10.100.21.2 
+                          remote_as: 1000
+                          allow_self_as: true
+                          send_community: true
+                          send_ext_community: true
+                          bfd: true
+                          #local_as: 200
+          export_route_map:
+            contexts:
+              - name: export-routes
+                match_rule: inb
+                set_rule: set-1
+          external_endpoint_groups:
+            - name: external
+              subnets:
+                - prefix: 0.0.0.0/0
+              contracts:
+                providers:
+                  - permit-to-oob
+
+      policies:
+        bfd_interface_policies:
+          - name: bfd-enabled
+            subinterface_optimization: true
+        set_rules:
+          - name: set-1
+            community_mode: append
+            community: regular:as2-nn2:12:123
+        match_rules:
+          - name: inb
+            prefixes:
+              - ip: 100.64.168.0/24
+                aggregate: false
+
+

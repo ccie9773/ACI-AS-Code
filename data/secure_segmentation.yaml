@@ -1,0 +1,153 @@
+---
+apic:
+  tenants:
+    - name: secure_segmentation
+
+      vrfs:
+        - name: vrf1
+          preferred_group: false
+
+      bridge_domains:
+        - name: bd_base
+          vrf: vrf1
+          subnets:
+            - ip: 192.168.10.1/24
+
+        - name: bd1
+          vrf: vrf1
+          subnets:
+            - ip: 192.168.11.1/24
+
+        - name: bd2
+          vrf: vrf1
+          subnets:
+            - ip: 192.168.12.1/24
+
+        - name: bd3
+          vrf: vrf1
+          subnets:
+            - ip: 192.168.13.1/24
+
+        - name: bd4
+          vrf: vrf1
+          subnets:
+            - ip: 192.168.14.1/24
+
+      application_profiles:
+        - name: ap
+          endpoint_groups:
+            - name: epg_base
+              bridge_domain: bd_base
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3030
+                - node_id: 1202
+                  port: 11
+                  vlan: 3030
+
+            - name: epg1
+              bridge_domain: bd1
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3031
+                - node_id: 1202
+                  port: 11
+                  vlan: 3031
+
+            - name: epg2
+              bridge_domain: bd2
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3032
+                - node_id: 1202
+                  port: 11
+                  vlan: 3032
+
+            - name: epg3
+              bridge_domain: bd3
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3033
+                - node_id: 1202
+                  port: 11
+                  vlan: 3033
+
+            - name: epg4
+              bridge_domain: bd4
+              vmware_vmm_domains:
+                - name: vds1-managed
+              physical_domains:
+                - all-physical-devices
+              static_ports:
+                - node_id: 1201
+                  port: 11
+                  vlan: 3034
+                - node_id: 1202
+                  port: 11
+                  vlan: 3034
+
+          endpoint_security_groups:
+            - name: ESG1
+              vrf: vrf1
+              contracts:
+                consumers:
+                  - permit-all
+              epg_selectors:
+                - endpoint_group: epg1
+                - endpoint_group: epg2
+            - name: ESG2
+              vrf: vrf1
+              contracts:
+                providers:
+                  - permit-all
+              epg_selectors:
+                - endpoint_group: epg3
+                - endpoint_group: epg4
+
+      filters:
+        - name: permit-any
+          entries:
+            - name: any
+              ethertype: ip
+              protocol: unspecified
+
+      contracts:
+        - name: permit-all
+          subjects:
+            - name: any
+              filters:
+                - filter: permit-any
+
+        - name: useg-contract
+          subjects:
+            - name: any
+              filters:
+                - filter: permit-any
+
+                  
+
+
+
+
+
+
