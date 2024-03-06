@@ -63,6 +63,7 @@ apic:
           ntp_servers:
             - hostname_ip: 100.64.255.2
             - hostname_ip: 100.64.60.123
+
               
       snmp_policies:
         - name: snmp-trap-destinations

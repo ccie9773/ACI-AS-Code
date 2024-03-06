@@ -18,7 +18,7 @@ apic:
       credential_policies:
         - name: admin
           username: administrator@vsphere.local
-          password: 123Cisco123!
+          password: "********"
       vcenters:
         - name: vcenter1
           hostname_ip: 100.64.60.200

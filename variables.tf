@@ -1,7 +1,7 @@
 variable "apic" {
   default = {
     username : "admin",
-    password : "123Cisco123",
+    password : "******",
     url : "https://100.64.48.21"
   }
 
